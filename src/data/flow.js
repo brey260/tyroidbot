@@ -108,6 +108,7 @@ export const flow = {
     message: "Ingresa tu valor de fT4 (ng/dL):",
     next: "final",
   },
+  //sdnajfjaf
 
   final: {
     id: "final",
