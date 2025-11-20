@@ -30,6 +30,8 @@ export default function Chat() {
   const [answers, setAnswers] = useState(createInitialAnswers);
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [summary, setSummary] = useState(null);
+  const chatEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   const messagesEndRef = useRef(null);
 
@@ -37,6 +39,15 @@ export default function Chat() {
     () => flow[currentStepId] ?? null,
     [currentStepId]
   );
+
+  // Auto-scroll cada vez que entran mensajes nuevos
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100); // tiempo pequeño para que el DOM pinte
+
+    return () => clearTimeout(timeout);
+  }, [messages]);
 
   /* ---------- INTERPRETACIONES ---------- */
 
@@ -158,8 +169,8 @@ export default function Chat() {
       labsEval?.riesgo === "ALTO" || sintomasEval.riesgo === "ALTO"
         ? "ALTO"
         : labsEval?.riesgo === "MODERADO" || sintomasEval.riesgo === "MODERADO"
-        ? "MODERADO"
-        : "BAJO";
+          ? "MODERADO"
+          : "BAJO";
 
     // Texto tipo chat (el que te gustó)
     let fullText = "Gracias por compartir tu información.\n\n";
@@ -339,8 +350,7 @@ export default function Chat() {
     const a = summary.answers || {};
 
     doc.text(
-      `Género: ${a.datos_generales_genero || "-"}   Edad: ${
-        a.datos_generales_edad || "-"
+      `Género: ${a.datos_generales_genero || "-"}   Edad: ${a.datos_generales_edad || "-"
       }`,
       10,
       y
@@ -421,7 +431,9 @@ export default function Chat() {
       </div>
 
       {/* MENSAJES */}
-      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 bg-linear-to-b from-slate-950 via-slate-950 to-slate-900">
+      <div 
+      ref={chatContainerRef}
+      className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 bg-linear-to-b from-slate-950 via-slate-950 to-slate-900">
         <div className="max-w-3xl mx-auto">
           {messages.map((msg) => (
             <MessageBubble key={msg.id} from={msg.from} text={msg.text} />
