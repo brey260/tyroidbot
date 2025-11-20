@@ -8,6 +8,8 @@ import {
   BarChart3,
   Maximize2,
   Minimize2,
+  Minus,
+  Plus,
 } from "lucide-react";
 
 import { AnimatePresence, motion } from "framer-motion";
@@ -27,16 +29,16 @@ export default function ResultCard({ summary }) {
 
   const { risk, sintomas, labs, answers } = summary;
 
-  const [showChart, setShowChart] = useState(() => {
-    return localStorage.getItem("pref_showChart") === "true";
-  });
+  // Estado: expandir/colapsar tarjeta completa
+  const [expanded, setExpanded] = useState(true);
 
+  // Estado: mostrar/ocultar gráfico
+  const [showChart, setShowChart] = useState(false);
+
+  // Estado: zoom fullscreen
   const [zoom, setZoom] = useState(false);
-  const chartRef = useRef(null);
 
-  useEffect(() => {
-    localStorage.setItem("pref_showChart", showChart);
-  }, [showChart]);
+  const chartRef = useRef(null);
 
   const riskStyles = {
     BAJO: {
@@ -66,32 +68,33 @@ export default function ResultCard({ summary }) {
   const Icon = style.icon;
 
   const labData = labs?.valores ?? [];
+  const tieneLabs = labData.length > 0;
 
   return (
     <>
-      {/* ZOOM FULLSCREEN */}
+      {/* MODAL FULLSCREEN */}
       <AnimatePresence>
         {zoom && (
           <motion.div
-            className="fixed inset-0 bg-black/80 backdrop-blur z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              initial={{ scale: 0.7 }}
+              initial={{ scale: 0.6 }}
               animate={{ scale: 1 }}
-              exit={{ scale: 0.7 }}
-              className="w-full max-w-xl bg-slate-900 border border-slate-700 rounded-2xl p-4 relative"
+              exit={{ scale: 0.6 }}
+              className="relative w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-4"
             >
               <button
                 onClick={() => setZoom(false)}
-                className="absolute top-3 right-3 text-slate-300 hover:text-white"
+                className="absolute top-3 right-3 text-slate-200 hover:text-white"
               >
                 <Minimize2 size={22} />
               </button>
 
-              <div className="h-[340px]" ref={chartRef}>
+              <div ref={chartRef} className="h-[330px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={labData}>
                     <XAxis dataKey="label" stroke="#cbd5f5" />
@@ -117,38 +120,30 @@ export default function ResultCard({ summary }) {
         )}
       </AnimatePresence>
 
-      {/* TARJETA PRINCIPAL */}
+      {/* TARJETA EXTERIOR */}
       <div
-        className={`rounded-2xl border ${style.border} bg-slate-900/90 px-4 py-4 sm:px-5 sm:py-5 shadow-xl shadow-black/30`}
+        className={`rounded-2xl border ${style.border} bg-slate-900/95 px-4 py-4 sm:p-5 shadow-xl shadow-black/30`}
       >
-        {/* Barra de riesgo */}
-        <div className="w-full h-2 rounded-full bg-slate-700 overflow-hidden mb-3">
-          <div
-            className={`h-full ${style.color}`}
-            style={{
-              width:
-                risk === "ALTO"
-                  ? "100%"
-                  : risk === "MODERADO"
-                  ? "60%"
-                  : "30%",
-            }}
-          />
+        {/* ----- HEADER SIEMPRE VISIBLE ----- */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Icon className="text-emerald-300" size={18} />
+            <p className="text-sm font-semibold text-slate-50">
+              Resultado orientativo
+            </p>
+          </div>
+
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-sky-300 hover:text-sky-200 transition"
+          >
+            {expanded ? <Minus size={22} /> : <Plus size={22} />}
+          </button>
         </div>
 
-        {/* Encabezado */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-slate-900 border border-slate-600 flex items-center justify-center">
-              <Icon className="text-emerald-300" size={18} />
-            </div>
-            <div>
-              <p className="text-xs text-slate-400">Resultado orientativo</p>
-              <p className="text-sm font-semibold text-slate-50">
-                Evaluación general
-              </p>
-            </div>
-          </div>
+        {/* SUBTÍTULO */}
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-slate-300">Evaluación general</p>
 
           <span
             className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-wide ${style.badge}`}
@@ -158,103 +153,125 @@ export default function ResultCard({ summary }) {
           </span>
         </div>
 
-        {/* Datos básicos */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-300 mb-3">
-          <div>
-            <p className="text-slate-500">Género</p>
-            <p className="font-medium">{answers?.datos_generales_genero}</p>
-          </div>
-          <div>
-            <p className="text-slate-500">Edad</p>
-            <p className="font-medium">{answers?.datos_generales_edad}</p>
-          </div>
-          <div>
-            <p className="text-slate-500">Antecedentes</p>
-            <p className="font-medium">
-              {answers?.datos_generales_antecedentes}
-            </p>
-          </div>
-        </div>
+        {/* ---- CONTENIDO COLAPSABLE ---- */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.35 }}
+              className="overflow-hidden"
+            >
+              {/* Barra riesgo */}
+              <div className="w-full h-2 rounded-full bg-slate-700 overflow-hidden mb-3 mt-2">
+                <div
+                  className={`${style.color} h-full`}
+                  style={{
+                    width:
+                      risk === "ALTO"
+                        ? "100%"
+                        : risk === "MODERADO"
+                        ? "60%"
+                        : "30%",
+                  }}
+                />
+              </div>
 
-        {/* Síntomas */}
-        <div className="mb-3">
-          <p className="text-xs font-semibold text-slate-200 mb-1">
-            Evaluación por síntomas ({sintomas.puntaje})
-          </p>
-          <p className="text-[11px] text-slate-300 whitespace-pre-line">
-            {sintomas.texto}
-          </p>
-        </div>
+              {/* DATOS GENERALES */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-300 mb-3">
+                <div>
+                  <p className="text-slate-500">Género</p>
+                  <p className="font-medium">{answers?.datos_generales_genero}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Edad</p>
+                  <p className="font-medium">{answers?.datos_generales_edad}</p>
+                </div>
+                <div>
+                  <p className="text-slate-500">Antecedentes</p>
+                  <p className="font-medium">
+                    {answers?.datos_generales_antecedentes}
+                  </p>
+                </div>
+              </div>
 
-        {/* Laboratorios */}
-        {labData.length > 0 && (
-          <div className="mb-3 min-h-fit">
-            <p className="text-xs font-semibold text-slate-200 mb-1">
-              Interpretación de laboratorios
-            </p>
-            <p className="text-[11px] text-slate-300 whitespace-pre-line">
-              {labs.texto}
-            </p>
+              {/* SÍNTOMAS */}
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-slate-200 mb-1">
+                  Evaluación por síntomas ({sintomas.puntaje})
+                </p>
+                <p className="text-[11px] text-slate-300 whitespace-pre-line">
+                  {sintomas.texto}
+                </p>
+              </div>
 
-            {/* ESTE ES EL BOTÓN QUE AHORA SÍ SE VE SIEMPRE */}
-            <div className="flex-shrink-0 min-h-[40px] mt-2">
-              <button
-                onClick={() => setShowChart(!showChart)}
-                className="flex items-center gap-2 text-xs font-medium text-sky-300 hover:text-sky-400 transition w-full py-1"
-              >
-                <BarChart3 size={14} />
-                {showChart ? "Ocultar gráfico" : "Ver gráfico de laboratorio"}
-                {showChart ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-            </div>
-
-            {/* Contenedor animado */}
-            <AnimatePresence>
-              {showChart && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 200 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.35 }}
-                  className="overflow-hidden"
+              {/* BOTÓN MOSTRAR / OCULTAR GRÁFICO */}
+              {tieneLabs && (
+                <button
+                  onClick={() => setShowChart(!showChart)}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg py-2 mb-3 
+                    bg-slate-800/80 border border-slate-700
+                    text-sky-300 hover:text-sky-200 transition text-xs font-medium"
                 >
-                  <div className="h-48 mt-1 bg-slate-900/80 border border-slate-700 rounded-xl relative p-2">
-                    <button
-                      onClick={() => setZoom(true)}
-                      className="absolute top-2 right-2 text-sky-300 hover:text-sky-400"
-                    >
-                      <Maximize2 size={18} />
-                    </button>
-
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={labData}>
-                        <XAxis dataKey="label" stroke="#cbd5f5" />
-                        <YAxis stroke="#94a3b8" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "#020617",
-                            border: "1px solid #1e293b",
-                          }}
-                        />
-                        {labData.map((d, i) => (
-                          <ReferenceLine key={i} y={d.min} stroke="#22c55e" />
-                        ))}
-                        {labData.map((d, i) => (
-                          <ReferenceLine
-                            key={`mx-${i}`}
-                            y={d.max}
-                            stroke="#f97316"
-                          />
-                        ))}
-                        <Bar dataKey="valor" fill="#38bdf8" radius={[6, 6, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </motion.div>
+                  <BarChart3 size={14} />
+                  {showChart ? "Ocultar gráfico" : "Ver gráfico de laboratorio"}
+                  {showChart ? (
+                    <ChevronUp size={14} />
+                  ) : (
+                    <ChevronDown size={14} />
+                  )}
+                </button>
               )}
-            </AnimatePresence>
-          </div>
-        )}
+
+              {/* GRÁFICO */}
+              <AnimatePresence>
+                {showChart && tieneLabs && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 200 }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden rounded-xl border border-slate-700 bg-slate-900/80"
+                  >
+                    <div className="h-48 w-full relative p-2">
+                      <button
+                        onClick={() => setZoom(true)}
+                        className="absolute top-2 right-2 text-sky-300 hover:text-sky-400"
+                      >
+                        <Maximize2 size={18} />
+                      </button>
+
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={labData}>
+                          <XAxis dataKey="label" stroke="#cbd5f5" />
+                          <YAxis stroke="#94a3b8" />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "#020617",
+                              border: "1px solid #1e293b",
+                            }}
+                          />
+                          {labData.map((d, i) => (
+                            <ReferenceLine key={i} y={d.min} stroke="#22c55e" />
+                          ))}
+                          {labData.map((d, i) => (
+                            <ReferenceLine key={`mx-${i}`} y={d.max} stroke="#f97316" />
+                          ))}
+                          <Bar dataKey="valor" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <p className="text-[10px] text-slate-500 mt-2">
+                Este resultado es orientativo y no reemplaza una consulta médica.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </>
   );
